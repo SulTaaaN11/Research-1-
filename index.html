@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>دراسة حالة: تحليل هيكل سوق منصات البث والترفيه الرقمي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0f19;
+  --glass:#1e293b;
+  --glass-border:rgba(255,255,255,.08);
+  --text:#f1f5f9;
+  --muted:#94a3b8;
+  --netflix:#e50914;
+  --shahid:#10b981;
+  --watchit:#8b5cf6;
+  --prime:#38bdf8;
+  --accent:var(--prime);
+  --accent-glow:rgba(56,189,248,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Cairo','Tajawal',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overscroll-behavior:none;
+}
+/* ---------- Background Ambience ---------- */
+.bg-orb{position:fixed;border-radius:50%;filter:blur(90px);opacity:.22;pointer-events:none;z-index:0;transition:all 1.2s ease}
+.orb-a{width:55vmax;height:55vmax;top:-20vmax;right:-15vmax;background:var(--accent)}
+.orb-b{width:45vmax;height:45vmax;bottom:-18vmax;left:-12vmax;background:var(--watchit);opacity:.14}
+body[data-theme="netflix"] .orb-a{background:var(--netflix)}
+body[data-theme="shahid"] .orb-a{background:var(--shahid)}
+body[data-theme="watchit"] .orb-a{background:var(--watchit)}
+body[data-theme="prime"] .orb-a{background:var(--prime)}
+.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse at center,black 40%,transparent 85%);
+}
+/* ---------- Header ---------- */
+header{
+  position:fixed;top:0;right:0;left:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 22px;
+  background:rgba(11,15,25,.55);
+  backdrop-filter:blur(18px) saturate(160%);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  border-bottom:1px solid var(--glass-border);
+}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:.95rem;white-space:nowrap}
+.logo .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent-glow);flex:none;transition:.4s}
+nav{display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  font-family:inherit;font-size:.78rem;font-weight:700;color:var(--muted);
+  background:transparent;border:none;border-radius:999px;
+  padding:7px 14px;cursor:pointer;white-space:nowrap;transition:.3s;
+}
+nav button:hover{color:var(--text);background:rgba(255,255,255,.06)}
+nav button.active{color:var(--bg);background:var(--accent);box-shadow:0 0 16px var(--accent-glow)}
+/* ---------- Slider Engine ---------- */
+#slider{position:fixed;inset:0;z-index:1}
+.slide{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:86px 20px 96px;
+  visibility:hidden;opacity:0;
+  transition:transform 0.85s cubic-bezier(.77,0,.18,1),opacity .7s ease,visibility 0s linear .85s;
+  will-change:transform;
+  overflow-y:auto;scrollbar-width:thin;
+}
+.slide.active{visibility:visible;opacity:1;transform:translate(0,0)!important;transition:transform .85s cubic-bezier(.77,0,.18,1),opacity .6s ease;z-index:2}
+.slide.exit-left{transform:translateX(-100%)}
+.slide.exit-right{transform:translateX(100%)}
+.slide.exit-up{transform:translateY(-100%)}
+.slide.exit-down{transform:translateY(100%)}
+/* directions: pages start off-screen according to their data-transition */
+.slide[data-t="slide-left"]{transform:translateX(-100%)}   /* new page enters from left  */
+.slide[data-t="slide-right"]{transform:translateX(100%)}  /* enters from right */
+.slide[data-t="slide-up"]{transform:translateY(-100%)}    /* enters from top  */
+.slide[data-t="slide-down"]{transform:translateY(100%)}   /* enters from bottom */
+.slide[data-t="fade"]{transform:scale(.94)}
+/* inner content animation */
+.slide .page-inner{max-width:1050px;width:100%;margin:auto;opacity:0;transform:translateY(28px);transition:opacity .7s ease .35s,transform .7s cubic-bezier(.22,1,.36,1) .35s}
+.slide.active .page-inner{opacity:1;transform:translateY(0)}
+/* ---------- Shared Components ---------- */
+.badge-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:22px}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 16px;border-radius:999px;font-size:.8rem;font-weight:800;
+  background:rgba(255,255,255,.06);border:1px solid var(--glass-border);
+  backdrop-filter:blur(8px);
+}
+.badge .b-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
+.glass{
+  background:linear-gradient(160deg,rgba(30,41,59,.85),rgba(15,23,42,.75));
+  border:1px solid var(--glass-border);
+  border-radius:22px;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.kicker{font-size:.8rem;font-weight:800;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.kicker::before{content:"";width:26px;height:2px;background:var(--accent);border-radius:2px;box-shadow:0 0 8px var(--accent-glow)}
+h1{font-size:clamp(1.7rem,5vw,3.2rem);font-weight:900;line-height:1.35}
+h2{font-size:clamp(1.35rem,3.4vw,2.15rem);font-weight:900;line-height:1.4;margin-bottom:8px}
+.grad{background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lead{color:var(--muted);font-size:clamp(.92rem,1.6vw,1.08rem);line-height:1.9;max-width:780px}
+/* ---------- Page 1: Hero ---------- */
+.hero{text-align:center}
+.hero h1{margin-bottom:16px}
+.hero .lead{margin:0 auto 34px}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;max-width:920px;margin:0 auto}
+.stat-card{padding:20px 14px;text-align:center;transition:transform .35s ease,box-shadow .35s ease}
+.stat-card:hover{transform:translateY(-6px);box-shadow:0 22px 50px rgba(0,0,0,.55),0 0 24px var(--accent-glow)}
+.stat-card .label{font-size:.72rem;font-weight:800;color:var(--muted);letter-spacing:.06em;margin-bottom:6px}
+.stat-card .value{font-size:1.02rem;font-weight:900}
+.scroll-hint{margin-top:30px;font-size:.78rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;animation:bob 2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+/* ---------- Page 2: Problem & Solution ---------- */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.panel{padding:26px 24px;position:relative;overflow:hidden}
+.panel::before{content:"";position:absolute;top:0;right:0;left:0;height:3px;background:linear-gradient(90deg,var(--pc),transparent);box-shadow:0 0 18px var(--pcg)}
+.panel h3{font-size:1.15rem;font-weight:900;margin-bottom:12px;color:var(--pc);display:flex;align-items:center;gap:10px}
+.panel h3 .num{width:32px;height:32px;border-radius:10px;background:var(--pcg);display:grid;place-items:center;font-size:.9rem;color:var(--pc);flex:none;border:1px solid var(--pcg)}
+.panel p{color:#cbd5e1;line-height:1.95;font-size:.94rem;margin-bottom:14px}
+.panel ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.panel li{background:rgba(255,255,255,.04);border:1px solid var(--glass-border);border-radius:14px;padding:11px 14px;font-size:.87rem;line-height:1.8;color:#cbd5e1}
+.panel li b{color:var(--pc)}
+.panel.netflix{--pc:var(--netflix);--pcg:rgba(229,9,20,.16)}
+.panel.shahid{--pc:var(--shahid);--pcg:rgba(16,185,129,.16)}
+/* ---------- Page 3: SVOD ---------- */
+.svod-layout{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:start}
+.pillar{display:flex;gap:14px;padding:16px;margin-bottom:14px}
+.pillar:last-child{margin-bottom:0}
+.pillar .icon{width:46px;height:46px;border-radius:14px;flex:none;display:grid;place-items:center;font-size:1.3rem;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25)}
+.pillar h4{font-weight:900;font-size:.98rem;margin-bottom:4px;color:var(--prime)}
+.pillar p{font-size:.85rem;color:var(--muted);line-height:1.8}
+.platforms-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.plat-card{padding:18px 16px;text-align:center;position:relative;overflow:hidden;transition:transform .35s ease}
+.plat-card:hover{transform:translateY(-5px) scale(1.02)}
+.plat-card::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;background:var(--pc);box-shadow:0 0 16px var(--pcg)}
+.plat-card .name{font-weight:900;font-size:1rem;color:var(--pc);margin-bottom:5px}
+.plat-card .tag{font-size:.74rem;color:var(--muted);line-height:1.7}
+.plat-card .logo-mark{width:46px;height:46px;margin:0 auto 10px;border-radius:13px;display:grid;place-items:center;font-weight:900;font-size:.9rem;color:#fff;background:linear-gradient(135deg,var(--pc),color-mix(in srgb,var(--pc) 55%,#000));box-shadow:0 6px 18px var(--pcg)}
+.plat-card.n{--pc:var(--netflix);--pcg:rgba(229,9,20,.4)}
+.plat-card.s{--pc:var(--shahid);--pcg:rgba(16,185,129,.4)}
+.plat-card.w{--pc:var(--watchit);--pcg:rgba(139,92,246,.4)}
+.plat-card.p{--pc:var(--prime);--pcg:rgba(56,189,248,.4)}
+/* ---------- Page 4: Criteria Accordions ---------- */
+.acc{display:flex;flex-direction:column;gap:12px}
+.acc-item{overflow:hidden;transition:box-shadow .3s}
+.acc-item.open{box-shadow:0 18px 44px rgba(0,0,0,.5),0 0 20px var(--accg,rgba(56,189,248,.15))}
+.acc-head{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:transparent;border:none;color:var(--text);font-family:inherit;cursor:pointer;text-align:right}
+.acc-head .n{width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;font-weight:900;font-size:.9rem;color:var(--acc);background:var(--accg);border:1px solid var(--accg)}
+.acc-head .t{font-weight:900;font-size:.98rem;flex:1}
+.acc-head .arrow{transition:transform .4s ease;color:var(--acc);font-size:1rem}
+.acc-item.open .arrow{transform:rotate(180deg)}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.22,1,.36,1)}
+.acc-body p{padding:0 20px 18px 68px;font-size:.88rem;color:#cbd5e1;line-height:1.95}
+.acc-item:nth-child(1){--acc:var(--netflix);--accg:rgba(229,9,20,.14)}
+.acc-item:nth-child(2){--acc:var(--shahid);--accg:rgba(16,185,129,.14)}
+.acc-item:nth-child(3){--acc:var(--watchit);--accg:rgba(139,92,246,.14)}
+.acc-item:nth-child(4){--acc:var(--prime);--accg:rgba(56,189,248,.14)}
+.acc-item:nth-child(5){--acc:#f59e0b;--accg:rgba(245,158,11,.14)}
+/* ---------- Page 5: Table & Conclusion ---------- */
+.table-wrap{overflow-x:auto;border-radius:18px}
+table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:640px}
+thead th{background:rgba(255,255,255,.06);padding:13px 14px;text-align:right;font-size:.78rem;color:var(--muted);letter-spacing:.05em;border-bottom:1px solid var(--glass-border);white-space:nowrap}
+tbody td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.05);line-height:1.8;color:#cbd5e1;vertical-align:top}
+tbody tr{transition:background .25s}
+tbody tr:hover{background:rgba(56,189,248,.05)}
+td .pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.74rem;font-weight:800;background:rgba(56,189,248,.12);color:var(--prime);border:1px solid rgba(56,189,248,.25);white-space:nowrap}
+.conclusion{margin-top:18px;padding:22px;position:relative;overflow:hidden;border-color:rgba(56,189,248,.25)}
+.conclusion::before{content:"";position:absolute;top:0;right:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--prime),var(--watchit));box-shadow:0 0 16px rgba(56,189,248,.4)}
+.conclusion h3{font-size:1.05rem;font-weight:900;color:var(--prime);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.conclusion p{font-size:.92rem;line-height:2;color:#cbd5e1}
+/* ---------- Page 6: Recommendations & Footer ---------- */
+.recs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:26px}
+.rec{padding:22px 18px;position:relative;overflow:hidden;transition:transform .35s ease}
+.rec:hover{transform:translateY(-6px)}
+.rec::before{content:"";position:absolute;top:0;right:0;left:0;height:3px;background:linear-gradient(90deg,var(--rc),transparent)}
+.rec .rn{font-size:2rem;font-weight:900;color:var(--rcg);line-height:1;margin-bottom:12px}
+.rec h4{font-weight:900;font-size:.98rem;margin-bottom:8px;color:var(--rc)}
+.rec p{font-size:.83rem;color:var(--muted);line-height:1.85}
+.rec:nth-child(1){--rc:var(--prime);--rcg:rgba(56,189,248,.25)}
+.rec:nth-child(2){--rc:var(--shahid);--rcg:rgba(16,185,129,.25)}
+.rec:nth-child(3){--rc:var(--watchit);--rcg:rgba(139,92,246,.25)}
+.final-footer{text-align:center;padding:24px 20px}
+.final-footer .f-title{font-weight:900;font-size:1.05rem;margin-bottom:14px}
+.final-footer .f-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:14px}
+.final-footer .f-item{font-size:.8rem;font-weight:700;padding:8px 16px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:#cbd5e1}
+.final-footer .f-item b{color:var(--accent)}
+.final-footer .thanks{font-size:.82rem;color:var(--muted)}
+/* ---------- Controls ---------- */
+#counter{
+  position:fixed;bottom:22px;right:50%;transform:translateX(50%);z-index:50;
+  display:flex;align-items:center;gap:16px;
+  padding:9px 18px;border-radius:999px;
+  background:rgba(11,15,25,.6);border:1px solid var(--glass-border);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+}
+#counter .pg{font-size:.85rem;font-weight:800;letter-spacing:.08em;min-width:52px;text-align:center}
+#counter .pg b{color:var(--accent)}
+.ctrl-btn{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--glass-border);
+  background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;
+  display:grid;place-items:center;font-size:1rem;transition:.3s;font-family:inherit;
+}
+.ctrl-btn:hover{background:var(--accent);color:var(--bg);box-shadow:0 0 18px var(--accent-glow);transform:scale(1.08)}
+#dots{position:fixed;left:18px;top:50%;transform:translateY(-50%);z-index:50;display:flex;flex-direction:column;gap:12px}
+#dots button{width:10px;height:10px;border-radius:999px;border:none;background:rgba(255,255,255,.22);cursor:pointer;transition:.35s;padding:0}
+#dots button:hover{background:rgba(255,255,255,.55)}
+#dots button.active{height:30px;background:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+/* progress bar */
+#progress{position:fixed;top:0;right:0;left:0;height:3px;z-index:60;background:rgba(255,255,255,.05)}
+#progress .bar{height:100%;width:16.66%;background:linear-gradient(90deg,var(--accent),var(--watchit));box-shadow:0 0 12px var(--accent-glow);transition:width .7s cubic-bezier(.22,1,.36,1),background .4s}
+/* ---------- Responsive ---------- */
+@media(max-width:880px){
+  .two-col,.svod-layout{grid-template-columns:1fr}
+  .recs{grid-template-columns:1fr}
+  nav button{padding:6px 10px;font-size:.7rem}
+  .logo span{display:none}
+  #dots{flex-direction:row;left:50%;top:auto;bottom:78px;transform:translateX(-50%)}
+  #dots button.active{width:30px;height:10px}
+  .slide{padding:80px 14px 140px}
+  .acc-body p{padding:0 16px 16px 16px}
+}
+</style>
+</head>
+<body data-theme="prime">
+
+<div id="progress"><div class="bar"></div></div>
+<div class="bg-orb orb-a"></div>
+<div class="bg-orb orb-b"></div>
+<div class="grid-overlay"></div>
+
+<header>
+  <div class="logo"><span class="dot"></span><span>تحليل هيكل سوق البث الرقمي</span></div>
+  <nav id="nav"></nav>
+</header>
+
+<main id="slider">
+
+  <!-- ============ PAGE 1: HERO ============ -->
+  <section class="slide" data-t="fade" data-theme="prime">
+    <div class="page-inner hero">
+      <div class="badge-row">
+        <span class="badge"><span class="b-dot"></span>دراسة حالة اقتصادية</span>
+        <span class="badge"><span class="b-dot"></span>احتكار قلة (Oligopoly)</span>
+      </div>
+      <h1>تحليل هيكل سوق منصات<br><span class="grad">البث والترفيه الرقمي</span></h1>
+      <p class="lead">دراسة تطبيقية للنظريات الاقتصادية على آليات التنافس وسلوك الشركات في سوق خدمات الفيديو حسب الطلب (SVOD) — حيث تتصارع عمالقة المحتوى على ملايين المشتركين.</p>
+      <div class="stat-cards">
+        <div class="glass stat-card"><div class="label">إعداد الطالب</div><div class="value">سعد السيد سعد</div></div>
+        <div class="glass stat-card"><div class="label">المادة</div><div class="value">مبادئ الاقتصاد</div></div>
+        <div class="glass stat-card"><div class="label">الكلية والتخصص</div><div class="value">نظم معلومات إدارية</div></div>
+        <div class="glass stat-card"><div class="label">الفرقة / المجموعة</div><div class="value">الفرقة الأولى — (ج)</div></div>
+      </div>
+      <div class="scroll-hint">↓ اسحب أو استخدم عجلة الماوس للتنقل</div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 2: PROBLEM & SOLUTION ============ -->
+  <section class="slide" data-t="slide-left" data-theme="netflix">
+    <div class="page-inner">
+      <div class="badge-row"><span class="badge"><span class="b-dot"></span>المشكلة والحل الاقتصادي</span></div>
+      <h2 style="text-align:center;margin-bottom:22px">أزمة <span class="grad">تشتت المحتوى</span> وكيف تعالجها المنصات؟</h2>
+      <div class="two-col">
+        <div class="glass panel netflix">
+          <h3><span class="num">⚠</span>المشكلة: تشتت المحتوى</h3>
+          <p>يعاني المستهلك الحديث من <b>"تشتت المحتوى" (Content Fragmentation)</b> بسبب تنافس المنصات الكبرى على حظر حقوق البث الحصري، مما يُجبر المستهلك على الاشتراك في عدة منصات في وقت واحد (مثل Netflix و Shahid و Watch IT) لرفع العبء المالي الإجمالي للاشتراكات.</p>
+          <ul>
+            <li><b>تكاليف مليارية:</b> ارتفاع تكاليف إنتاج المحتوى الحصري لمستويات مليارية تُرهق ميزانيات الشركات.</li>
+            <li><b>معدل التسرب (Churn Rate):</b> ظاهرة إلغاء الاشتراك المتقلب بمجرد انتهاء عرض المسلسل الحصري.</li>
+          </ul>
+        </div>
+        <div class="glass panel shahid">
+          <h3><span class="num">✓</span>الحل الاقتصادي</h3>
+          <p>تتجه المنصات لمعالجة هذه الأزمة عبر آليات اقتصادية تهدف إلى تعظيم المنفعة وتقليل تسرب المشتركين:</p>
+          <ul>
+            <li><b>الاشتراكات المدعومة بالإعلانات (AVOD/HVOD):</b> تقديم باقات أرخص للشرائح الحساسة للسعر.</li>
+            <li><b>خوارزميات الذكاء الاصطناعي:</b> تقديم توصيات دقيقة تعظم القيمة المحسوسة للمستخدم وتُبقي مشتركيه.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 3: SVOD DEFINITION ============ -->
+  <section class="slide" data-t="slide-right" data-theme="watchit">
+    <div class="page-inner">
+      <div class="badge-row"><span class="badge"><span class="b-dot"></span>تعريف الخدمة محل الدراسة</span></div>
+      <h2 style="text-align:center;margin-bottom:10px">ما هي خدمة <span class="grad">SVOD</span>؟</h2>
+      <p class="lead" style="margin:0 auto 22px;text-align:center">يُعرف الفيديو حسب الطلب (SVOD) اقتصادياً على أنه خدمة رقمية تتيح للمستهلك الوصول غير المحدود لمكتبة مرئية مقابل رسم اشتراك دوري (شهري أو سنوي).</p>
+      <div class="svod-layout">
+        <div>
+          <div class="glass pillar">
+            <div class="icon">🎬</div>
+            <div><h4>حصرية الملكية الفكرية</h4><p>الأصول غير ملموسة وتعتمد على ترخيص الحقوق والإنتاج الأصلي المباشر — وهو ما يبني ولاء المستهلك للمحتوى الحصري.</p></div>
+          </div>
+          <div class="glass pillar">
+            <div class="icon">🖥️</div>
+            <div><h4>البنية التحتية البرمجية</h4><p>تعتمد الخدمة على شبكات توصيل المحتوى (CDNs) وخوارزميات تعلم الآلة لضمان جودة البث والتوصيات الذكية.</p></div>
+          </div>
+        </div>
+        <div class="platforms-grid">
+          <div class="glass plat-card n"><div class="logo-mark">N</div><div class="name">Netflix</div><div class="tag">الرائد العالمي — محتوى حصري أصلي واسع النطاق</div></div>
+          <div class="glass plat-card s"><div class="logo-mark">S</div><div class="name">Shahid</div><div class="tag">المنصة العربية الأولى — دراما ومسلسلات حصرية</div></div>
+          <div class="glass plat-card w"><div class="logo-mark">W</div><div class="name">Watch IT</div><div class="tag">المحتوى المصري — تراث وإنتاجات حديثة حصرياً</div></div>
+          <div class="glass plat-card p"><div class="logo-mark">P</div><div class="name">Prime Video</div><div class="tag">عملاق أمازون — باقات مجمعة ومزايا لوجستية</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 4: MARKET STRUCTURE CRITERIA ============ -->
+  <section class="slide" data-t="slide-up" data-theme="shahid">
+    <div class="page-inner">
+      <div class="badge-row"><span class="badge"><span class="b-dot"></span>التحليل العميق — معايير هيكل السوق</span></div>
+      <h2 style="text-align:center;margin-bottom:22px">المعايير <span class="grad">الخمسة</span> لهيكل السوق</h2>
+      <div class="acc">
+        <div class="glass acc-item">
+          <button class="acc-head"><span class="n">1</span><span class="t">عدد البائعين والمشترين</span><span class="arrow">▾</span></button>
+          <div class="acc-body"><p>سيطرة عدد محدود جداً من الموردين (مثل Netflix و Shahid و Watch IT) على ملايين المشتركين، مما ينجم عنه قوة سوقية عالية للشركات البائعة وشبه انعدام للقوة التفاوضية للمستهلكين.</p></div>
+        </div>
+        <div class="glass acc-item">
+          <button class="acc-head"><span class="n">2</span><span class="t">الاعتماد المتبادل (Mutual Interdependence)</span><span class="arrow">▾</span></button>
+          <div class="acc-body"><p>تأثر القرارات الاستراتيجية لكل منصة فوراً بتحركات المنافسين — مثل اتباع المنصات لشركة Netflix عندما منعت مشاركة الحسابات وعندما أطلقت باقة الإعلانات المدعومة.</p></div>
+        </div>
+        <div class="glass acc-item">
+          <button class="acc-head"><span class="n">3</span><span class="t">حواجز الدخول والخروج (High Barriers to Entry)</span><span class="arrow">▾</span></button>
+          <div class="acc-body"><p>حواجز مرتفعة جداً وشبه تعجيزية أمام المنافسين الجدد، نظراً للتكاليف المليارية المطلوبة للإنتاج الحصري وللبنية التحتية البرمجية (شبكات CDN والتراخيص).</p></div>
+        </div>
+        <div class="glass acc-item">
+          <button class="acc-head"><span class="n">4</span><span class="t">التحكم في الأسعار (Kinked Demand)</span><span class="arrow">▾</span></button>
+          <div class="acc-body"><p>خضوع المنصات لنموذج "منحنى الطلب المنكسر"؛ فرفع السعر بمفردها تفقدها المشتركين لصالح المنافسين، بينما تخفيضه يجبر المنافسين على التخفيض فتنشأ حرب أسعار ضارة بالجميع.</p></div>
+        </div>
+        <div class="glass acc-item">
+          <button class="acc-head"><span class="n">5</span><span class="t">المنافسة غير السعرية (Non-Price Competition)</span><span class="arrow">▾</span></button>
+          <div class="acc-body"><p>يرتكز التنافس على تمييز المنتج (Product Differentiation)، التعاقد مع كبار النجوم، شراء حقوق البث الحصري، وتطوير جودة العرض (4K، Dolby).</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 5: RESULTS TABLE & CONCLUSION ============ -->
+  <section class="slide" data-t="slide-down" data-theme="prime">
+    <div class="page-inner">
+      <div class="badge-row"><span class="badge"><span class="b-dot"></span>جدول النتيجة والاستنتاج</span></div>
+      <h2 style="text-align:center;margin-bottom:22px">خلاصة <span class="grad">التحليل الكمّي</span></h2>
+      <div class="glass table-wrap">
+        <table>
+          <thead><tr><th>المعيار</th><th>الواقع في السوق</th><th>النتيجة الاقتصادية</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. عدد المنصات والمستهلكين</b></td><td>عدد محدود من المنصات مقابل ملايين المشتركين</td><td><span class="pill">احتكار قلة متميز (Oligopoly)</span></td></tr>
+            <tr><td><b>2. طبيعة المنتج</b></td><td>محتوى غير متجانس وإنتاجات حصرية</td><td><span class="pill">ولاء المستهلك للمحتوى الحصري</span></td></tr>
+            <tr><td><b>3. حرية دخول السوق</b></td><td>قيود رأس مال وتراخيص بتكاليف مليارية</td><td><span class="pill">حماية الأرباح الاقتصادية للمهيمنين</span></td></tr>
+            <tr><td><b>4. السلوك التسعييري</b></td><td>خضوع لمنحنى الطلب المنكسر</td><td><span class="pill">استقرار الأسعار والتنافس عبر الجودة</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="glass conclusion">
+        <h3>📌 الخلاصة الاستنتاجية</h3>
+        <p>يُثبت التحليل أن سوق منصات البث نموذج واقعي لـ <b style="color:var(--prime)">"احتكار القلة المتميز"</b>، حيث تتركز القوة السوقية في أيدي عمالقة محددين، وتتحول المنافسة إلى حرب <b>حقوق ملكية فكرية وتكنولوجيا</b> بدلاً من التنافس السعري الضار الذي يدمّر أرباح الجميع.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 6: RECOMMENDATIONS & CLOSING ============ -->
+  <section class="slide" data-t="slide-left" data-theme="watchit">
+    <div class="page-inner">
+      <div class="badge-row"><span class="badge"><span class="b-dot"></span>التوصيات المستقبلية وخاتمة البحث</span></div>
+      <h2 style="text-align:center;margin-bottom:22px">مستقبل <span class="grad">سوق البث الرقمي</span></h2>
+      <div class="recs">
+        <div class="glass rec"><div class="rn">01</div><h4>نموذج حزم الخدمات (Bundling)</h4><p>التوسع في الشراكات مع شركات الاتصالات لخلق حزم اشتراك مجمعة بسعر موحد، تقليلًا لتشتت العبء المالي على المستهلك.</p></div>
+        <div class="glass rec"><div class="rn">02</div><h4>توظيف أعمق للذكاء الاصطناعي</h4><p>استغلال الذكاء الاصطناعي التوليدي في إنتاج وتحسين المحتوى المحلي وتقليل تكاليف الإنتاج الحصري.</p></div>
+        <div class="glass rec"><div class="rn">03</div><h4>تطوير الاشتراكات الإعلانية</h4><p>التوسع في خطط البث المدعومة بالإعلانات الذكية غير المزعجة لضمان استقطاب الشرائح الحساسة للتغيرات السعرية.</p></div>
+      </div>
+      <div class="glass final-footer">
+        <div class="f-title">شكراً لحسن استماعكم 🎓</div>
+        <div class="f-grid">
+          <span class="f-item">إعداد: <b>سعد السيد سعد</b></span>
+          <span class="f-item">المادة: <b>مبادئ الاقتصاد</b></span>
+          <span class="f-item">التخصص: <b>نظم معلومات إدارية</b></span>
+          <span class="f-item">الفرقة: <b>الأولى</b></span>
+          <span class="f-item">المجموعة: <b>ج</b></span>
+        </div>
+        <div class="thanks">دراسة حالة: تحليل هيكل سوق منصات البث والترفيه الرقمي — احتكار قلة (Oligopoly)</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Controls -->
+<div id="dots"></div>
+<div id="counter">
+  <button class="ctrl-btn" id="prevBtn" aria-label="السابق">❮</button>
+  <div class="pg"><b id="curPg">1</b> / 6</div>
+  <button class="ctrl-btn" id="nextBtn" aria-label="التالي">❯</button>
+</div>
+
+<script>
+(function(){
+  const slides=[...document.querySelectorAll('.slide')];
+  const total=slides.length;
+  const nav=document.getElementById('nav'),dots=document.getElementById('dots');
+  const curPg=document.getElementById('curPg'),bar=document.querySelector('#progress .bar');
+  const root=document.documentElement;
+  let current=0, animating=false;
+
+  const labels=['الغلاف','المشكلة والحل','تعريف SVOD','معايير السوق','النتائج','التوصيات'];
+
+  // build nav + dots
+  slides.forEach((s,i)=>{
+    const nb=document.createElement('button');
+    nb.textContent=labels[i];
+    nb.addEventListener('click',()=>goTo(i));
+    nav.appendChild(nb);
+    const db=document.createElement('button');
+    db.setAttribute('aria-label',labels[i]);
+    db.addEventListener('click',()=>goTo(i));
+    dots.appendChild(db);
+  });
+  const navBtns=[...nav.children], dotBtns=[...dots.children];
+
+  function applyTheme(i){
+    document.body.dataset.theme=slides[i].dataset.theme||'prime';
+    root.style.setProperty('--accent',getComputedStyle(document.body).getPropertyValue('--accent'));
+  }
+  // set accent var from theme map
+  const themeAccents={netflix:'#e50914',shahid:'#10b981',watchit:'#8b5cf6',prime:'#38bdf8'};
+  function setAccent(i){
+    const t=slides[i].dataset.theme||'prime';
+    const a=themeAccents[t];
+    root.style.setProperty('--accent',a);
+    root.style.setProperty('--accent-glow',a+'59');
+  }
+
+  function goTo(i){
+    if(animating||i===current||i<0||i>=total) return;
+    animating=true;
+    const prev=slides[current], next=slides[i];
+    // remove active with exit direction: slide out opposite to entry
+    prev.classList.remove('active');
+    // entrance handled by data-t; force reflow then add
+    void next.offsetWidth;
+    next.classList.add('active');
+    current=i;
+    curPg.textContent=i+1;
+    bar.style.width=((i+1)/total*100)+'%';
+    setAccent(i);
+    navBtns.forEach((b,bi)=>b.classList.toggle('active',bi===i));
+    dotBtns.forEach((b,bi)=>b.classList.toggle('active',bi===i));
+    setTimeout(()=>{animating=false},880);
+  }
+
+  document.getElementById('nextBtn').addEventListener('click',()=>goTo(Math.min(current+1,total-1)));
+  document.getElementById('prevBtn').addEventListener('click',()=>goTo(Math.max(current-1,0)));
+
+  // keyboard
+  document.addEventListener('keydown',e=>{
+    if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) goTo(Math.max(current-1,0));
+    if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)) goTo(Math.min(current+1,total-1));
+    if(e.key==='Home') goTo(0);
+    if(e.key==='End') goTo(total-1);
+  });
+
+  // wheel (debounced)
+  let wheelLock=false;
+  window.addEventListener('wheel',e=>{
+    if(wheelLock||animating) return;
+    if(Math.abs(e.deltaY)<20) return;
+    wheelLock=true;
+    e.deltaY>0?goTo(Math.min(current+1,total-1)):goTo(Math.max(current-1,0));
+    setTimeout(()=>wheelLock=false,900);
+  },{passive:true});
+
+  // touch swipe
+  let tx=0,ty=0;
+  window.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+  window.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+    if(Math.abs(dx)<60&&Math.abs(dy)<60) return;
+    if(Math.abs(dx)>Math.abs(dy)){ // horizontal
+      dx<0?goTo(Math.min(current+1,total-1)):goTo(Math.max(current-1,0)); // RTL: swipe left = next
+    } else {
+      dy<0?goTo(Math.min(current+1,total-1)):goTo(Math.max(current-1,0));
+    }
+  },{passive:true});
+
+  // accordions
+  document.querySelectorAll('.acc-item').forEach(item=>{
+    item.querySelector('.acc-head').addEventListener('click',()=>{
+      const body=item.querySelector('.acc-body');
+      const open=item.classList.contains('open');
+      document.querySelectorAll('.acc-item.open').forEach(o=>{
+        o.classList.remove('open');
+        o.querySelector('.acc-body').style.maxHeight='0px';
+      });
+      if(!open){
+        item.classList.add('open');
+        body.style.maxHeight=body.scrollHeight+'px';
+      }
+    });
+  });
+  // open first accordion by default
+  const first=document.querySelector('.acc-item');
+  if(first){first.classList.add('open');first.querySelector('.acc-body').style.maxHeight=first.querySelector('.acc-body').scrollHeight+'px';}
+
+  // init
+  slides[0].classList.add('active');
+  navBtns[0].classList.add('active');
+  dotBtns[0].classList.add('active');
+  setAccent(0);
+})();
+</script>
+</body>
+</html>
